@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kokpit Rekam Medis Pasien — Clinical Glass Cockpit UI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&family=Figtree:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div class="cockpit-shell">
+    <div class="page-grid">
+
+      <!-- 1. Masthead & Alur Kerja -->
+      <header class="app-masthead">
+        <div class="masthead-top">
+          <div class="title-group">
+            <span class="kicker">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+              Clinical Frontend Engineering · Glass Cockpit UI
+            </span>
+            <h1 class="title">Kokpit Rekam Medis Pasien</h1>
+            <p class="lede">
+              Antarmuka klinis satu layar untuk pencarian pasien, pemantauan tanda vital persisten, dokumentasi catatan SOAP terstruktur, dan pemeriksaan keselamatan alergi dengan kontras WCAG AAA (≥ 7:1).
+            </p>
+          </div>
+          <div class="masthead-badges">
+            <span class="chip" data-status="info" id="wcag-badge">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+              Kontras Tinggi WCAG 7:1
+            </span>
+            <span class="chip" data-status="warning" id="record-sync-badge">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span>Status: Menunggu Simpan</span>
+            </span>
+          </div>
+        </div>
+
+        <nav class="workflow-nav" aria-label="Alur Kerja Rekam Medis">
+          <button type="button" class="step-btn" id="step-nav-1" aria-current="step" onclick="jumpToStep(1, 'patient-search-section')">
+            <span class="step-num">1</span>
+            <span class="step-label">Cari &amp; Pilih Pasien</span>
+          </button>
+          <button type="button" class="step-btn" id="step-nav-2" onclick="jumpToStep(2, 'cockpit-persistent-dock')">
+            <span class="step-num">2</span>
+            <span class="step-label">Tinjau Identitas &amp; Vital</span>
+          </button>
+          <button type="button" class="step-btn" id="step-nav-3" onclick="jumpToStep(3, 'soap-grid-section')">
+            <span class="step-num">3</span>
+            <span class="step-label">Isi Catatan SOAP</span>
+          </button>
+          <button type="button" class="step-btn" id="step-nav-4" onclick="jumpToStep(4, 'save-and-history-section')">
+            <span class="step-num">4</span>
+            <span class="step-label">Verifikasi &amp; Simpan</span>
+          </button>
+        </nav>
+      </header>
+
+      <!-- 2. Tahap 1: Pencarian & Seleksi Pasien -->
+      <section class="section-card" id="patient-search-section" aria-labelledby="search-heading">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title" id="search-heading">1. Pencarian &amp; Seleksi Pasien</h2>
+            <p class="section-sub">Cari berdasarkan nama pasien, nomor MRN, atau unit klinis untuk memuat kokpit rekam medis.</p>
+          </div>
+          <span class="chip" data-status="info" id="patient-count-chip">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span id="patient-count-text">4 Pasien Terdaftar</span>
+          </span>
+        </div>
+
+        <div class="search-toolbar">
+          <div class="field-group">
+            <label class="field-label" for="patient-search-input">
+              <span>Cari Pasien (Nama, MRN, atau Unit)</span>
+              <span class="field-hint">Contoh: Ratna atau MRN-2026-0418</span>
+            </label>
+            <input
+              type="search"
+              id="patient-search-input"
+              class="input-control"
+              placeholder="Ketik nama pasien, nomor MRN, atau unit..."
+              oninput="handleSearchInput(this.value)"
+            >
+          </div>
+          <button type="button" class="btn btn-secondary" onclick="clearPatientSearch()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            Bersihkan
+          </button>
+          <button type="button" class="btn btn-primary" id="toggle-new-patient-btn" aria-expanded="false" onclick="toggleNewPatientDrawer()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+            Tambah Pasien Baru
+          </button>
+        </div>
+
+        <div class="filter-row" role="group" aria-label="Filter status klinis pasien">
+          <button type="button" class="filter-pill" id="filter-all" aria-pressed="true" onclick="setSeverityFilter('all')">Semua Pasien</button>
+          <button type="button" class="filter-pill" id="filter-alert" aria-pressed="false" onclick="setSeverityFilter('alert')">Alert Kritis</button>
+          <button type="button" class="filter-pill" id="filter-warning" aria-pressed="false" onclick="setSeverityFilter('warning')">Perlu Observasi</button>
+          <button type="button" class="filter-pill" id="filter-ok" aria-pressed="false" onclick="setSeverityFilter('ok')">Stabil / Normal</button>
+        </div>
+
+        <!-- Inline New Patient Registration Drawer -->
+        <div class="new-patient-drawer" id="new-patient-drawer" hidden>
+          <div class="section-head">
+            <h3 class="vitals-heading">Registrasi Pasien Baru ke Kokpit</h3>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="toggleNewPatientDrawer()">Tutup Formulir</button>
+          </div>
+          <div class="drawer-grid">
+            <div class="field-group">
+              <label class="field-label" for="new-pt-name">Nama Lengkap Pasien</label>
+              <input type="text" id="new-pt-name" class="input-control" placeholder="Mis. Tn. Budi Santoso">
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="new-pt-dob">Tanggal Lahir (DOB)</label>
+              <input type="date" id="new-pt-dob" class="input-control" value="1985-05-12">
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="new-pt-sex">Jenis Kelamin</label>
+              <select id="new-pt-sex" class="select-control">
+                <option value="Laki-laki">Laki-laki</option>
+                <option value="Perempuan">Perempuan</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="new-pt-blood">Golongan Darah</label>
+              <select id="new-pt-blood" class="select-control">
+                <option value="O Rh+">O Rh+</option>
+                <option value="A Rh+">A Rh+</option>
+                <option value="B Rh+">B Rh+</option>
+                <option value="AB Rh+">AB Rh+</option>
+                <option value="O Rh-">O Rh-</option>
+                <option value="A Rh-">A Rh-</option>
+                <option value="B Rh-">B Rh-</option>
+                <option value="AB Rh-">AB Rh-</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="new-pt-unit">Unit Klinis</label>
+              <input type="text" id="new-pt-unit" class="input-control" value="Poliklinik Umum">
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="new-pt-allergy">Riwayat Alergi Obat (opsional)</label>
+              <input type="text" id="new-pt-allergy" class="input-control" placeholder="Kosongkan jika Tidak Ada Alergi">
+            </div>
+          </div>
+          <div class="inline-feedback-banner" id="new-patient-error" data-tone="error" hidden></div>
+          <div class="action-buttons-row">
+            <button type="button" class="btn btn-primary" onclick="createNewPatient()">Simpan &amp; Muat Pasien ke Kokpit</button>
+          </div>
+        </div>
+
+        <div class="patient-results-grid" id="patient-results-grid" role="listbox" aria-label="Daftar Pasien"></div>
+      </section>
+
+      <!-- 3. Tahap 2: Persistent Patient Header + Persistent Vitals Panel -->
+      <section class="cockpit-dock" id="cockpit-persistent-dock" data-pinned="false" aria-label="Header Pasien dan Panel Tanda Vital Persisten">
+
+        <!-- Persistent Patient Identity Header -->
+        <div class="patient-banner">
+          <div class="patient-identity-main">
+            <span class="patient-role-tag">Header Pasien Persisten · Identitas Aktif</span>
+            <h2 class="patient-full-name" id="hdr-patient-name">—</h2>
+            <div class="patient-unit-line" id="hdr-patient-unit">—</div>
+          </div>
+
+          <div class="patient-demographics-grid">
+            <div class="demo-cell">
+              <span class="demo-label">Tanggal Lahir (DOB)</span>
+              <span class="demo-value" id="hdr-patient-dob">—</span>
+            </div>
+            <div class="demo-cell">
+              <span class="demo-label">Nomor Rekam Medis (MRN)</span>
+              <span class="demo-value">
+                <span class="mono-code" id="hdr-patient-mrn">—</span>
+                <button type="button" class="copy-mrn-btn" id="copy-mrn-btn" onclick="copyActiveMrn()">Salin</button>
+              </span>
+            </div>
+            <div class="demo-cell">
+              <span class="demo-label">Golongan Darah</span>
+              <span class="demo-value" id="hdr-patient-blood">—</span>
+            </div>
+            <div class="demo-cell">
+              <span class="demo-label">Jenis Kelamin &amp; Usia</span>
+              <span class="demo-value" id="hdr-patient-sex-age">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Double-Coded Medical Alerts Strip (Icon + Color + Text) -->
+        <div class="alerts-strip" id="medical-alerts-strip" role="status" aria-live="polite" aria-label="Indikator Alert Medis"></div>
+
+        <!-- Persistent Vitals Panel -->
+        <div class="vitals-header-row">
+          <div class="vitals-title-wrap">
+            <h3 class="vitals-heading">Panel Tanda Vital Persisten</h3>
+            <span class="chip" data-status="info" id="vitals-overall-chip">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+              <span id="vitals-overall-text">Memuat...</span>
+            </span>
+          </div>
+          <div class="vitals-preset-bar" aria-label="Simulasi cepat tanda vital">
+        <button type="button" class="preset-btn" id="pin-dock-btn" aria-pressed="false" onclick="toggleDockPin()">Sematkan Dock</button>
+            <button type="button" class="preset-btn" onclick="applyVitalPreset('stable')">Simulasi Stabil</button>
+            <button type="button" class="preset-btn" onclick="applyVitalPreset('fever')">Simulasi Demam / Takikardia</button>
+            <button type="button" class="preset-btn" onclick="applyVitalPreset('crisis')">Simulasi Kritis</button>
+            <button type="button" class="preset-btn" onclick="applyVitalPreset('restore')">Kembalikan Awal</button>
+          </div>
+        </div>
+
+        <div class="vitals-grid" id="vitals-grid">
+          <!-- Card 1: Tekanan Darah -->
+          <div class="vital-card-wrap">
+            <div class="vital-card" id="card-vital-bp" data-status="ok">
+              <div class="vital-card-top">
+                <span class="vital-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+                  Tekanan Darah
+                </span>
+                <span class="chip" id="chip-vital-bp" data-status="ok"></span>
+              </div>
+              <div class="vital-readout-row">
+                <span class="vital-number" id="disp-vital-bp">120/80</span>
+                <span class="vital-unit">mmHg</span>
+              </div>
+              <div class="range-track" aria-hidden="true">
+                <div class="range-normal-band" style="left: 25%; width: 25%;"></div>
+                <div class="range-marker" id="marker-vital-bp" style="left: 40%;"></div>
+              </div>
+              <svg class="vital-sparkline" id="spark-bp" viewBox="0 0 140 30" aria-hidden="true"></svg>
+              <div class="vital-inputs-inline">
+                <div class="vital-mini-field">
+                  <label class="vital-mini-label" for="input-sbp">Sistolik</label>
+                  <input type="number" id="input-sbp" class="vital-mini-input" min="40" max="260" step="1" oninput="updateVitalField('sbp', this.value)">
+                </div>
+                <div class="vital-mini-field">
+                  <label class="vital-mini-label" for="input-dbp">Diastolik</label>
+                  <input type="number" id="input-dbp" class="vital-mini-input" min="25" max="160" step="1" oninput="updateVitalField('dbp', this.value)">
+                </div>
+              </div>
+              <div class="vital-ref-caption">
+                <span>Normal: 90–129 / 60–84</span>
+                <span id="err-vital-bp" class="field-error" hidden></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2: Detak Jantung -->
+          <div class="vital-card-wrap">
+            <div class="vital-card" id="card-vital-hr" data-status="ok">
+              <div class="vital-card-top">
+                <span class="vital-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                  Detak Jantung
+                </span>
+                <span class="chip" id="chip-vital-hr" data-status="ok"></span>
+              </div>
+              <div class="vital-readout-row">
+                <span class="vital-number" id="disp-vital-hr">76</span>
+                <span class="vital-unit">bpm</span>
+              </div>
+              <div class="range-track" aria-hidden="true">
+                <div class="range-normal-band" style="left: 22%; width: 33%;"></div>
+                <div class="range-marker" id="marker-vital-hr" style="left: 40%;"></div>
+              </div>
+              <svg class="vital-sparkline" id="spark-hr" viewBox="0 0 140 30" aria-hidden="true"></svg>
+              <div class="vital-inputs-inline">
+                <div class="vital-mini-field">
+                  <label class="vital-mini-label" for="input-hr">Nadi (bpm)</label>
+                  <input type="number" id="input-hr" class="vital-mini-input" min="25" max="220" step="1" oninput="updateVitalField('hr', this.value)">
+                </div>
+              </div>
+              <div class="vital-ref-caption">
+                <span>Normal: 60–100 bpm</span>
+                <span id="err-vital-hr" class="field-error" hidden></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 3: Suhu Tubuh -->
+          <div class="vital-card-wrap">
+            <div class="vital-card" id="card-vital-temp" data-status="ok">
+              <div class="vital-card-top">
+                <span class="vital-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>
+                  Suhu Tubuh
+                </span>
+                <span class="chip" id="chip-vital-temp" data-status="ok"></span>
+              </div>
+              <div class="vital-readout-row">
+                <span class="vital-number" id="disp-vital-temp">36.7</span>
+                <span class="vital-unit">°C</span>
+              </div>
+              <div class="range-track" aria-hidden="true">
+                <div class="range-normal-band" style="left: 34%; width: 22%;"></div>
+                <div class="range-marker" id="marker-vital-temp" style="left: 45%;"></div>
+              </div>
+              <svg class="vital-sparkline" id="spark-temp" viewBox="0 0 140 30" aria-hidden="true"></svg>
+              <div class="vital-inputs-inline">
+                <div class="vital-mini-field">
+                  <label class="vital-mini-label" for="input-temp">Suhu (°C)</label>
+                  <input type="number" id="input-temp" class="vital-mini-input" min="32" max="43" step="0.1" oninput="updateVitalField('temp', this.value)">
+                </div>
+              </div>
+              <div class="vital-ref-caption">
+                <span>Normal: 36.1–37.5 °C</span>
+                <span id="err-vital-temp" class="field-error" hidden></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 4: Saturasi O2 & Laju Napas -->
+          <div class="vital-card-wrap">
+            <div class="vital-card" id="card-vital-spo2" data-status="ok">
+              <div class="vital-card-top">
+                <span class="vital-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/><path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M12.6 19.4A2 2 0 1 0 14 16H2"/></svg>
+                  SpO₂ &amp; Napas
+                </span>
+                <span class="chip" id="chip-vital-spo2" data-status="ok"></span>
+              </div>
+              <div class="vital-readout-row">
+                <span class="vital-number" id="disp-vital-spo2">98%</span>
+                <span class="vital-unit" id="disp-vital-rr">RR 18 x/mnt</span>
+              </div>
+              <div class="range-track" aria-hidden="true">
+                <div class="range-normal-band" style="left: 72%; width: 28%;"></div>
+                <div class="range-marker" id="marker-vital-spo2" style="left: 90%;"></div>
+              </div>
+              <svg class="vital-sparkline" id="spark-spo2" viewBox="0 0 140 30" aria-hidden="true"></svg>
+              <div class="vital-inputs-inline">
+                <div class="vital-mini-field">
+                  <label class="vital-mini-label" for="input-spo2">SpO₂ (%)</label>
+                  <input type="number" id="input-spo2" class="vital-mini-input" min="60" max="100" step="1" oninput="updateVitalField('spo2', this.value)">
+                </div>
+                <div class="vital-mini-field">
+                  <label class="vital-mini-label" for="input-rr">RR (x/mnt)</label>
+                  <input type="number" id="input-rr" class="vital-mini-input" min="6" max="50" step="1" oninput="updateVitalField('rr', this.value)">
+                </div>
+              </div>
+              <div class="vital-ref-caption">
+                <span>Normal: ≥ 95% · 12–20 x/mnt</span>
+                <span id="err-vital-spo2" class="field-error" hidden></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. Tahap 3: Grid Catatan SOAP -->
+      <section class="section-card" id="soap-grid-section" aria-labelledby="soap-heading">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title" id="soap-heading">3. Grid Catatan Klinis SOAP</h2>
+            <p class="section-sub">Dokumentasi terstruktur Subjective, Objective, Assessment, dan Plan dengan validasi kelengkapan dan deteksi interaksi alergi.</p>
+          </div>
+          <div class="masthead-badges">
+            <span class="chip" data-status="info" id="soap-completeness-chip">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              <span id="soap-completeness-text">0 / 4 Bagian Terisi</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="soap-grid">
+          <!-- S: Subjective -->
+          <article class="soap-card" id="soap-card-s" data-status="info">
+            <div class="soap-card-head">
+              <div class="soap-letter-row">
+                <span class="soap-badge" aria-hidden="true">S</span>
+                <div>
+                  <h3 class="soap-title">Subjective (Subjektif)</h3>
+                  <p class="soap-desc">Keluhan utama, riwayat penyakit sekarang, dan tingkat nyeri.</p>
+                </div>
+              </div>
+              <span class="chip" id="soap-chip-s" data-status="info">Menunggu</span>
+            </div>
+
+            <div class="field-group">
+              <label class="field-label" for="soap-s-input">
+                <span>Keluhan Pasien &amp; Anamnesis</span>
+                <span class="field-hint">Minimal 10 karakter</span>
+              </label>
+              <textarea id="soap-s-input" class="textarea-control" placeholder="Tuliskan keluhan utama, onset gejala, dan riwayat terkait..." oninput="updateSoapField('s', this.value)"></textarea>
+            </div>
+
+            <div class="pain-scale-row">
+              <div class="field-group">
+                <label class="field-label" for="pain-slider">
+                  <span>Skala Nyeri (NRS 0–10)</span>
+                  <span class="field-hint" id="pain-desc-label">0 = Tidak Nyeri</span>
+                </label>
+                <input type="range" id="pain-slider" class="pain-slider" min="0" max="10" step="1" value="0" oninput="syncPainFromSlider(this.value)">
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="pain-number">Skor</label>
+                <input type="number" id="pain-number" class="input-control" min="0" max="10" step="1" value="0" oninput="syncPainFromNumber(this.value)">
+              </div>
+            </div>
+
+            <div class="field-group">
+              <span class="field-label">Sisipkan Frasa Cepat Subjektif</span>
+              <div class="quick-chips-row">
+                <button type="button" class="quick-chip-btn" onclick="insertSoapTemplate('s', 'pusing')">+ Pusing berdenyut</button>
+                <button type="button" class="quick-chip-btn" onclick="insertSoapTemplate('s', 'sesak')">+ Sesak &amp; batuk</button>
+                <button type="button" class="quick-chip-btn" onclick="insertSoapTemplate('s', 'demam')">+ Demam 3 hari</button>
+                <button type="button" class="quick-chip-btn" onclick="insertSoapTemplate('s', 'obat')">+ Kepatuhan obat</button>
+              </div>
+            </div>
+          </article>
+
+          <!-- O: Objective -->
+          <article class="soap-card" id="soap-card-o" data-status="info">
+            <div class="soap-card-head">
+              <div class="soap-letter-row">
+                <span class="soap-badge" aria-hidden="true">O</span>
+                <div>
+                  <h3 class="soap-title">Objective (Objektif)</h3>
+                  <p class="soap-desc">Pemeriksaan fisik, tanda vital terkini, dan hasil penunjang.</p>
+                </div>
+              </div>
+              <span class="chip" id="soap-chip-o" data-status="info">Menunggu</span>
+            </div>
+
+            <div class="field-group">
+              <label class="field-label" for="soap-o-input">
+                <span>Temuan Pemeriksaan Fisik &amp; Penunjang</span>
+                <span class="field-hint">Tautkan Tanda Vital</span>
+              </label>
+              <textarea id="soap-o-input" class="textarea-control" placeholder="Tuliskan status generalis, pemeriksaan jantung/paru/abdomen, dan hasil lab..." oninput="updateSoapField('o', this.value)"></textarea>
+            </div>
+
+            <div class="quick-chips-row">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="syncVitalsToObjective()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                Sinkronkan Tanda Vital ke Objektif
+              </button>
+            </div>
+
+            <div class="field-group">
+              <span class="field-label">Sisipkan Temuan Fisik Cepat</span>
+              <div class="quick-chips-row">
+                <button type="button" class="quick-chip-btn" onclick="insertSoapTemplate('o', 'cm')">+ Compos Mentis</button>
+                <button type="button" class="quick-chip-btn" onclick="insertSoapTemplate('o', 'ronkhi')">+ Ronkhi basal</button>
+                <button type="button" class="quick-chip-btn" onclick="insertSoapTemplate('o', 'cor')">+ Cor reguler</button>
+              </div>
+            </div>
+          </article>
+
+          <!-- A: Assessment -->
+          <article class="soap-card" id="soap-card-a" data-status="info">
+            <div class="soap-card-head">
+              <div class="soap-letter-row">
+                <span class="soap-badge" aria-hidden="true">A</span>
+                <div>
+                  <h3 class="soap-title">Assessment (Asesmen)</h3>
+                  <p class="soap-desc">Diagnosis kerja, kode ICD-10, dan tingkat keparahan klinis.</p>
+                </div>
+              </div>
+              <span class="chip" id="soap-chip-a" data-status="info">Menunggu</span>
+            </div>
+
+            <div class="drawer-grid">
+              <div class="field-group">
+                <label class="field-label" for="soap-icd-input">Kode &amp; Diagnosis Utama (ICD-10)</label>
+                <input type="text" id="soap-icd-input" class="input-control" placeholder="Mis. I10 — Hipertensi Esensial" oninput="updateSoapField('icd', this.value)">
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="soap-acuity-select">Prioritas / Akuitas Klinis</label>
+                <select id="soap-acuity-select" class="select-control" onchange="updateSoapField('acuity', this.value)">
+                  <option value="Stabil">Stabil / Rawat Jalan</option>
+                  <option value="Observasi">Perlu Observasi Ketat</option>
+                  <option value="Kritis">Kritis / Eskalasi Segera</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field-group">
+              <label class="field-label" for="soap-a-input">
+                <span>Analisis Klinis &amp; Diagnosis Banding</span>
+                <span class="field-hint">Alasan klinis diagnosis</span>
+              </label>
+              <textarea id="soap-a-input" class="textarea-control" placeholder="Tuliskan simpulan klinis dan diagnosis banding yang relevan..." oninput="updateSoapField('a', this.value)"></textarea>
+            </div>
+
+            <div class="field-group">
+              <span class="field-label">Pilih Cepat Kode ICD-10</span>
+              <div class="quick-chips-row">
+                <button type="button" class="quick-chip-btn" onclick="applyIcdPreset('i10')">I10 Hipertensi</button>
+                <button type="button" class="quick-chip-btn" onclick="applyIcdPreset('j18')">J18.9 Pneumonia</button>
+                <button type="button" class="quick-chip-btn" onclick="applyIcdPreset('e11')">E11.9 DM Tipe 2</button>
+                <button type="button" class="quick-chip-btn" onclick="applyIcdPreset('r50')">R50.9 Demam Akut</button>
+                <button type="button" class="quick-chip-btn" onclick="applyIcdPreset('j06')">J06.9 ISPA</button>
+              </div>
+            </div>
+          </article>
+
+          <!-- P: Plan -->
+          <article class="soap-card" id="soap-card-p" data-status="info">
+            <div class="soap-card-head">
+              <div class="soap-letter-row">
+                <span class="soap-badge" aria-hidden="true">P</span>
+                <div>
+                  <h3 class="soap-title">Plan (Rencana Terapi)</h3>
+                  <p class="soap-desc">Terapi obat, pemeriksaan lanjutan, edukasi, dan tindak lanjut.</p>
+                </div>
+              </div>
+              <span class="chip" id="soap-chip-p" data-status="info">Menunggu</span>
+            </div>
+
+            <!-- Real-time Allergy Conflict Alert Box -->
+            <div class="cds-alert-box" id="allergy-cds-alert" role="alert" hidden>
+              <div class="cds-alert-title">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <span>PERINGATAN KESELAMATAN OBAT (KONFLIK ALERGI)</span>
+              </div>
+              <p class="cds-alert-body" id="allergy-cds-message"></p>
+            </div>
+
+            <div class="field-group">
+              <label class="field-label" for="soap-p-input">
+                <span>Rencana Medikamentosa, Diagnostik &amp; Edukasi</span>
+                <span class="field-hint">Pemeriksa alergi aktif otomatis</span>
+              </label>
+              <textarea id="soap-p-input" class="textarea-control" placeholder="Tuliskan resep obat, dosis, pemeriksaan penunjang lanjutan, dan edukasi pasien..." oninput="updateSoapField('p', this.value)"></textarea>
+            </div>
+
+            <div class="field-group">
+              <span class="field-label">Sisipkan Rencana Terapi &amp; Uji Deteksi Alergi</span>
+              <div class="quick-chips-row">
+                <button type="button" class="quick-chip-btn" onclick="insertSoapTemplate('p', 'amlodipin')">+ Amlodipin 5mg</button>
+                <button type="button" class="quick-chip-btn" onclick="insertSoapTemplate('p', 'parasetamol')">+ Parasetamol 500mg</button>
+                <button type="button" class="quick-chip-btn" onclick="insertSoapTemplate('p', 'oksigen')">+ O₂ &amp; Lab</button>
+                <button type="button" class="quick-chip-btn" data-risk="test" onclick="insertSoapTemplate('p', 'amoksisilin')">+ Amoksisilin (Uji Alert Penisilin)</button>
+                <button type="button" class="quick-chip-btn" data-risk="test" onclick="insertSoapTemplate('p', 'ibuprofen')">+ Ibuprofen (Uji Alert OAINS)</button>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- 5. Tahap 4: Verifikasi Keselamatan, Simpan & Riwayat -->
+      <section class="section-card" id="save-and-history-section" aria-labelledby="save-heading">
+        <div class="section-head">
+          <div>
+            <h2 class="section-title" id="save-heading">4. Verifikasi Keselamatan &amp; Penyimpanan Rekam Medis</h2>
+            <p class="section-sub">Pastikan seluruh indikator keselamatan lolos sebelum mengesahkan catatan ke arsip rekam medis pasien.</p>
+          </div>
+          <span class="chip" data-status="info" id="saved-count-chip">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span id="saved-count-text">0 Rekam Tersimpan</span>
+          </span>
+        </div>
+
+        <!-- Pre-save Safety Checklist -->
+        <div class="safety-checklist" id="safety-checklist">
+          <div class="safety-item" id="check-vitals" data-status="ok"></div>
+          <div class="safety-item" id="check-soap" data-status="warning"></div>
+          <div class="safety-item" id="check-allergy" data-status="ok"></div>
+        </div>
+
+        <!-- Clinician & Action Buttons -->
+        <div class="save-actions-bar">
+          <div class="field-group">
+            <label class="field-label" for="clinician-name-input">Dokter / Klinisi Penanggung Jawab</label>
+            <input type="text" id="clinician-name-input" class="input-control" value="dr. Ardiansyah Putra, Sp.PD" oninput="updateClinicianName(this.value)">
+          </div>
+
+          <div class="action-buttons-row">
+            <button type="button" class="btn btn-danger-outline" id="reset-form-btn" onclick="resetCurrentEncounter(this)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+              Reset Catatan
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="exportRecordTxt()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Ekspor Ringkasan (.TXT)
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="saveMedicalRecord('draft')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Simpan Draf
+            </button>
+            <button type="button" class="btn btn-primary" onclick="saveMedicalRecord('final')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+              Simpan Rekam Medis
+            </button>
+          </div>
+        </div>
+
+        <div class="inline-feedback-banner" id="save-feedback-banner" role="status" aria-live="polite" hidden></div>
+
+        <!-- Audit Log / Saved Records History -->
+        <div class="section-head">
+          <div>
+            <h3 class="vitals-heading">Riwayat Rekam Medis Tersimpan (<span id="history-patient-name">—</span>)</h3>
+            <p class="section-sub">Catatan yang telah disimpan otomatis bertahan antar sesi. Klik Muat Ulang untuk meninjau atau menyunting.</p>
+          </div>
+        </div>
+
+        <div class="records-list" id="saved-records-list"></div>
+      </section>
+
+      <footer class="source-footer">
+        <span>Standar Desain: Clinical Frontend Engineering (Glass Cockpit UI) · Tipografi: Atkinson Hyperlegible, Figtree &amp; IBM Plex Mono.</span>
+        <span>Seluruh tanda peringatan menggunakan pengodean ganda (ikon geometris + label teks + kontras WCAG AAA ≥ 7:1).</span>
+      </footer>
+
+    </div>
+  </div>
+
+
+  <script src="app.js"></script>
+</body>
+</html>
